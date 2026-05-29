@@ -5,6 +5,8 @@ import babel from '@rolldown/plugin-babel'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
+  // Load env variables for development use within vite.config.js if needed
+  // In production, Vite handles VITE_ variables automatically
   const env = loadEnv(mode, process.cwd(), '')
   
   return {
@@ -12,12 +14,6 @@ export default defineConfig(({ mode }) => {
       react(),
       babel({ presets: [reactCompilerPreset()] })
     ],
-    define: {
-      __supabase_config: JSON.stringify({
-        url: env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL_HERE',
-        anonKey: env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE'
-      }),
-      __app_id: JSON.stringify(env.VITE_APP_ID || 'default-app-id')
-    }
+    // Removed define block as we now use import.meta.env directly in App.jsx
   }
 })

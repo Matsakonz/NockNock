@@ -116,7 +116,20 @@ export default function App() {
 
   // 1. Initialize Supabase Connection
   useEffect(() => {
-    if (typeof window.__supabase_config === 'undefined') {
+    // Try to get config from Vite env first, then fallback to window (for legacy/injected setups)
+    const envConfig = {
+      url: import.meta.env.VITE_SUPABASE_URL,
+      anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY
+    };
+    
+    const windowConfig = typeof window.__supabase_config === 'string' 
+      ? JSON.parse(window.__supabase_config) 
+      : window.__supabase_config;
+
+    const config = (envConfig.url && envConfig.anonKey) ? envConfig : windowConfig;
+
+    if (!config || !config.url || config.url.includes('YOUR_SUPABASE_URL_HERE')) {
+      console.log("No valid Supabase config found, using local mode.");
       setTimeout(() => {
         setIsLoadingDB(false);
         const saved = localStorage.getItem('whopay_trips_v7');
@@ -126,40 +139,22 @@ export default function App() {
     }
 
     try {
-      console.log("Supabase Config from window:", window.__supabase_config);
-      if (!window.__supabase_config) {
-        console.error("Supabase config is missing from window object.");
-        setTimeout(() => setIsLoadingDB(false), 0);
-        return;
-      }
-
-      // Handle case where config might already be an object (Vite's define often does this)
-      const config = typeof window.__supabase_config === 'string' 
-        ? JSON.parse(window.__supabase_config) 
-        : window.__supabase_config;
-
       console.log("Initializing Supabase with URL:", config.url);
-      
-      if (!config.url || config.url.includes('YOUR_SUPABASE_URL_HERE')) {
-        console.error("Supabase URL is invalid or default.");
-        setTimeout(() => setIsLoadingDB(false), 0);
-        return;
-      }
-
       const supabase = createClient(config.url, config.anonKey);
-      setTimeout(() => setDb(supabase), 0);
+      setDb(supabase);
+      setIsCloudConnected(true);
+      setIsLoadingDB(false);
       console.log("Supabase client initialized.");
-      setTimeout(() => setIsCloudConnected(true), 0);
     } catch(e) { 
       console.error("Supabase Initialization Error:", e); 
-      setTimeout(() => setIsLoadingDB(false), 0); 
+      setIsLoadingDB(false); 
     }
   }, []);
 
   // 2. Sync Real-time Data
   useEffect(() => {
     if (!db) return;
-    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+    const appId = import.meta.env.VITE_APP_ID || window.__app_id || 'default-app-id';
 
     const fetchTrips = async () => {
       const { data, error } = await db
